@@ -1,0 +1,2 @@
+# [Terminfo](@id stdlib-terminfo)
+

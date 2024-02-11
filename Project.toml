@@ -1,0 +1,13 @@
+name = "Terminfo"
+uuid = "12d03031-3805-4545-af84-a5010036a76f"
+authors = ["TEC <git@tecosaur.net>"]
+version = "1.11.0"
+
+[compat]
+julia = "1.11"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
