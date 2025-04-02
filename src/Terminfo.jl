@@ -15,9 +15,10 @@ current_terminfo::TermInfo = TermInfo()
 include("parser.jl")
 include("loading.jl")
 include("truecolor.jl")
+include("prettyprinter.jl")
 
-# if Base.generating_output()
-#     include("precompile.jl")
-# end
+function __init__()
+    global current_terminfo = load_terminfo()
+end
 
 end

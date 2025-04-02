@@ -1,9 +1,8 @@
 # This file is a part of Julia. License is MIT: https://julialang.org/license
 
 # Updating this listing is fairly easy, assuming existence of a unix system,
-# posix shell, and `awk`. Just update the version string in the commented out
-# `NCURSES_VERSION` variable, and run this file. This works because this file is
-# a bit of a quine.
+# posix shell, and `awk`. Just run this file as a shell script. This works
+# because this file is a bit of a quine.
 
 #=
 awk '/^#=run/{flag=1;next}/=#/{flag=0}flag{gsub(/__FILE__/,"\"'"$0"'\"");print}' "$0" | \
@@ -12,22 +11,23 @@ awk '/^#=run/{flag=1;next}/=#/{flag=0}flag{gsub(/__FILE__/,"\"'"$0"'\"");print}'
 
 #=run
 begin
-const NCURSES_VERSION = "6.4"
-=#
 
-#=run
 using Downloads
 
+version_info = IOBuffer()
 standard_caps = IOBuffer()
 user_caps = IOBuffer()
 
-Downloads.download("https://raw.githubusercontent.com/mirror/ncurses/v$NCURSES_VERSION/include/Caps", standard_caps)
-Downloads.download("https://raw.githubusercontent.com/mirror/ncurses/v$NCURSES_VERSION/include/Caps-ncurses", user_caps)
+Downloads.download("https://raw.githubusercontent.com/ThomasDickey/ncurses-snapshots/refs/heads/master/VERSION", version_info)
+Downloads.download("https://raw.githubusercontent.com/ThomasDickey/ncurses-snapshots/refs/heads/master/include/Caps", standard_caps)
+Downloads.download("https://raw.githubusercontent.com/ThomasDickey/ncurses-snapshots/refs/heads/master/include/Caps-ncurses", user_caps)
 
 const TERM_FLAGS   = NTuple{3, String}[]
 const TERM_NUMBERS = NTuple{3, String}[]
 const TERM_STRINGS = NTuple{3, String}[]
 const TERM_USER    = NTuple{3, String}[]
+
+_, ncurses_version, ncurses_date = split(read(seekstart(version_info), String))
 
 for line in eachline(seekstart(standard_caps))
     startswith(line, '#') && continue
@@ -45,6 +45,7 @@ for line in eachline(seekstart(standard_caps))
         continue
     end
     push!(caplist, (name, shortcode, description))
+    description = replace(description, r"\\f[BPRI]?" => "")
 end
 
 for line in eachline(seekstart(user_caps))
@@ -70,16 +71,18 @@ for line in eachline(seekstart(user_caps))
 end
 
 push!(TERM_USER, ("Bool", "Tc", "tmux extension to indicate 24-bit truecolor support"))
+push!(TERM_USER, ("Bool", "Su", "kitty extension to indicate styled underline support"))
 
 const SENTINEL = "\n## GENERATED CODE BEYOND THIS POINT ##"
 const PREAMBLE = readuntil(__FILE__, SENTINEL, keep=true)
 
 out = IOBuffer()
-write(out, PREAMBLE, "\n\n# Terminfo Capabilities as of NCurses $NCURSES_VERSION\n")
+write(out, PREAMBLE, "\n\n# Terminfo Capabilities as of NCurses $ncurses_version-$ncurses_date\n",
+      "const NCURSES_VERSION = v\"$ncurses_version.$ncurses_date\"\n")
 
 for (ftype, list) in [("flag", TERM_FLAGS), ("number", TERM_NUMBERS), ("string", TERM_STRINGS)]
     print(out, "\n\"\"\"\n\
-          Ordered list of known terminal capability $ftype fields, as of NCurses $NCURSES_VERSION.\n\
+          Ordered list of known terminal capability $ftype fields, as of NCurses $ncurses_version-$ncurses_date.\n\
           \"\"\"\n\
           const TERM_$(uppercase(ftype))S = [")
     namepad = maximum(textwidth, getindex.(list, 1)) + 1
@@ -106,14 +109,15 @@ function getcustomalias(allterms::Vector{NTuple{3, String}}, type, short, descri
         "Su"    => ":can_style_underline",
         "csl"   => ":clear_status_line",
         "Ms"    => ":set_host_clipboard",
-        "Tc"    => ":truecolor")
+        "Tc"    => ":truecolor",
+        "XF"    => ":xterm_focus")
     if startswith(short, 'k') && !occursin("keypad", description)
         return ":key_" * replace(lowercase(description), r"[^a-z]" => '_')
     end
     return get(specific_aliases, short, "nothing")
 end
 
-print(out, "\n\"\"\"\nTerminfo extensions that NCurses $NCURSES_VERSION is aware of.\n\"\"\"",
+print(out, "\n\"\"\"\nTerminfo extensions that NCurses $ncurses_version-$ncurses_date is aware of.\n\"\"\"",
            "\nconst TERM_USER = Dict{Tuple{DataType, Symbol}, Union{Tuple{Nothing, String}, Tuple{Symbol, String}}}(")
 shortpad = maximum(textwidth, getindex.(TERM_USER, 2)) + 1
 for (type, short, description) in TERM_USER
@@ -130,10 +134,11 @@ end
 
 ## GENERATED CODE BEYOND THIS POINT ##
 
-# Terminfo Capabilities as of NCurses 6.4
+# Terminfo Capabilities as of NCurses 6.5-20250329
+const NCURSES_VERSION = v"6.5.20250329"
 
 """
-Ordered list of known terminal capability flag fields, as of NCurses 6.4.
+Ordered list of known terminal capability flag fields, as of NCurses 6.5-20250329.
 """
 const TERM_FLAGS = [
     TermCapability(:auto_left_margin,         :bw,    "cub1 wraps from column 0 to last column"),
@@ -183,7 +188,7 @@ const TERM_FLAGS = [
 ]
 
 """
-Ordered list of known terminal capability number fields, as of NCurses 6.4.
+Ordered list of known terminal capability number fields, as of NCurses 6.5-20250329.
 """
 const TERM_NUMBERS = [
     TermCapability(:columns,                 :cols,   "number of columns in a line"),
@@ -228,7 +233,7 @@ const TERM_NUMBERS = [
 ]
 
 """
-Ordered list of known terminal capability string fields, as of NCurses 6.4.
+Ordered list of known terminal capability string fields, as of NCurses 6.5-20250329.
 """
 const TERM_STRINGS = [
     TermCapability(:back_tab,                  :cbt,      "back tab (P)"),
@@ -319,8 +324,8 @@ const TERM_STRINGS = [
     TermCapability(:key_sr,                    :kri,      "scroll-backward key"),
     TermCapability(:key_stab,                  :khts,     "set-tab key"),
     TermCapability(:key_up,                    :kcuu1,    "up-arrow key"),
-    TermCapability(:keypad_local,              :rmkx,     "leave 'keyboard_transmit' mode"),
-    TermCapability(:keypad_xmit,               :smkx,     "enter 'keyboard_transmit' mode"),
+    TermCapability(:keypad_local,              :rmkx,     "leave keyboard transmit mode"),
+    TermCapability(:keypad_xmit,               :smkx,     "enter keyboard transmit mode"),
     TermCapability(:lab_f0,                    :lf0,      "label on function key f0 if not f0"),
     TermCapability(:lab_f1,                    :lf1,      "label on function key f1 if not f1"),
     TermCapability(:lab_f10,                   :lf10,     "label on function key f10 if not f10"),
@@ -502,7 +507,7 @@ const TERM_STRINGS = [
     TermCapability(:key_f63,                   :kf63,     "F63 function key"),
     TermCapability(:clr_bol,                   :el1,      "Clear to beginning of line"),
     TermCapability(:clear_margins,             :mgc,      "clear right and left soft margins"),
-    TermCapability(:set_left_margin,           :smgl,     "set left soft margin at current column."),
+    TermCapability(:set_left_margin,           :smgl,     "set left soft margin at current column (not in BSD \\fItermcap\\fP)"),
     TermCapability(:set_right_margin,          :smgr,     "set right soft margin at current column"),
     TermCapability(:label_format,              :fln,      "label format"),
     TermCapability(:set_clock,                 :sclk,     "set clock, #1 hrs #2 mins #3 secs"),
@@ -593,7 +598,7 @@ const TERM_STRINGS = [
     TermCapability(:set_a_foreground,          :setaf,    "Set foreground color to #1, using ANSI escape"),
     TermCapability(:set_a_background,          :setab,    "Set background color to #1, using ANSI escape"),
     TermCapability(:pkey_plab,                 :pfxl,     "Program function key #1 to type string #2 and show string #3"),
-    TermCapability(:device_type,               :devt,     "Indicate language/codeset support"),
+    TermCapability(:device_type,               :devt,     "Indicate language, codeset support"),
     TermCapability(:code_set_init,             :csin,     "Init sequence for multiple codesets"),
     TermCapability(:set0_des_seq,              :s0ds,     "Shift to codeset 0 (EUC set 0, ASCII)"),
     TermCapability(:set1_des_seq,              :s1ds,     "Shift to codeset 1"),
@@ -648,7 +653,7 @@ const TERM_STRINGS = [
 ]
 
 """
-Terminfo extensions that NCurses 6.4 is aware of.
+Terminfo extensions that NCurses 6.5-20250329 is aware of.
 """
 const TERM_USER = Dict{Tuple{DataType, Symbol}, Union{Tuple{Nothing, String}, Tuple{Symbol, String}}}(
     (Int,    :CO )    => (nothing, "number of indexed colors overlaying RGB space"),
@@ -696,6 +701,17 @@ const TERM_USER = Dict{Tuple{DataType, Symbol}, Union{Tuple{Nothing, String}, Tu
     (String, :Ss)     => (:set_cursor_style, "change the cursor style."),
     (String, :rmxx)   => (:exit_strikeout_mode, "reset ECMA-48 strikeout/crossed-out attributes."),
     (String, :smxx)   => (:enter_strikeout_mode, "set ECMA-48 strikeout/crossed-out attributes."),
+    (String, :BD)     => (nothing, "disables bracketed paste"),
+    (String, :BE)     => (nothing, "enables bracketed paste"),
+    (String, :PE)     => (nothing, "is sent after pasted text"),
+    (String, :PS)     => (nothing, "is sent before pasted text"),
+    (String, :RV)     => (nothing, "report terminal secondary device attributes"),
+    (String, :XR)     => (nothing, "report terminal version as a free-format string."),
+    (Bool,   :XF)     => (:xterm_focus, "terminal supports xterm focus in/out"),
+    (String, :fd)     => (nothing, "disable xterm focus-events"),
+    (String, :fe)     => (nothing, "enable xterm focus-events"),
+    (String, :rv)     => (nothing, "response to RV, regular expression"),
+    (String, :xr)     => (nothing, "response to XR, regular expression"),
     (String, :csl)    => (:clear_status_line, "clear status line"),
     (String, :kDC3)   => (:key_alt_delete_character, "alt delete-character"),
     (String, :kDC4)   => (:key_shift_alt_delete_character, "shift+alt delete-character"),
@@ -753,5 +769,8 @@ const TERM_USER = Dict{Tuple{DataType, Symbol}, Union{Tuple{Nothing, String}, Tu
     (String, :kb1)    => (nothing, "vt220-keypad extensions"),
     (String, :kb3)    => (nothing, "vt220-keypad extensions"),
     (String, :kc2)    => (nothing, "vt220-keypad extensions"),
+    (String, :kxIN)   => (:key_mouse_response_on_focus_in, "mouse response on focus-in"),
+    (String, :kxOUT)  => (:key_mouse_response_on_focus_out, "mouse response on focus-out"),
     (Bool,   :Tc)     => (:truecolor, "tmux extension to indicate 24-bit truecolor support"),
+    (Bool,   :Su)     => (:can_style_underline, "kitty extension to indicate styled underline support"),
 )

@@ -1,5 +1,15 @@
 # This file is a part of Julia. License is MIT: https://julialang.org/license
 
+if Sys.iswindows()
+    ttyhascolor(term_type = nothing) = true
+else
+    function ttyhascolor(term_type = get(ENV, "TERM", ""))
+        startswith(term_type, "xterm") ||
+            haskey(current_terminfo, :setaf) ||
+            ttyhastruecolor()
+    end
+end
+
 """
     ttyhastruecolor()
 
